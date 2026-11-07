@@ -1,59 +1,183 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Топ-100 России</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b1464">
+<title>Топляндия — топ-100 России</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:12px;background:#f5f6fa;color:#222}
-.card{background:#fff;border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 3px #0002}
-button{padding:8px 12px;border:0;border-radius:8px;background:#4f6df5;color:#fff;font-size:15px}
-button.o{background:#e9ecfb;color:#222}button.on{background:#222;color:#fff}
-input{padding:8px;font-size:16px;border:1px solid #ccc;border-radius:8px;width:100%;box-sizing:border-box;margin:4px 0}
-.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
-.me{background:#fff7d6}.tabs{display:flex;gap:6px;flex-wrap:wrap}
+:root{--ink:#1e1b3a;--card:#ffffffee;--r:18px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(160deg,#1b1464,#5b2bd9 60%,#c026d3);background-attachment:fixed;padding:max(12px,env(safe-area-inset-top)) 12px max(24px,env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;position:relative;z-index:1}
+h1{margin:4px 0;color:#fff;font-size:26px;letter-spacing:-.5px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;background:#ffffff26;color:#fff;border-radius:99px;padding:6px 11px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:#94a3b8}
+.live .dot{background:#4ade80;animation:pulse 1.6s infinite}
+.icon-btn{background:#ffffff26;border:0;color:#fff;border-radius:50%;width:38px;height:38px;font-size:18px;padding:0}
+.card{background:var(--card);backdrop-filter:blur(8px);border-radius:var(--r);padding:14px;margin:12px 0;box-shadow:0 8px 24px #0003}
+button{font:inherit;border:0;border-radius:12px;padding:12px 16px;font-weight:600;cursor:pointer;transition:transform .1s}
+button:active{transform:scale(.95)}
+.go{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;width:100%;font-size:17px}
+.chips{display:flex;gap:8px}
+.chip{flex:1;background:#f3f0ff;border-radius:14px;padding:8px;text-align:center;font-weight:800;font-size:20px}
+.chip small{display:block;font-weight:500;font-size:11px;opacity:.6}
+.bump{animation:bump .5s}
+.bar{height:8px;border-radius:9px;background:#e5e0ff;margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f59e0b,#ef4444);transition:width .4s}
+.hint{font-size:12px;opacity:.6;margin-top:4px;text-align:center}
+.seg{display:flex;background:#ece8ff;border-radius:12px;padding:3px;margin-bottom:6px}
+.seg button{flex:1;background:none;padding:8px}
+.seg .on{background:#fff;box-shadow:0 1px 4px #0002}
+#q{font-size:36px;font-weight:800;text-align:center;margin:10px 0}
+.in{animation:qin .3s}
+input{width:100%;font:inherit;font-size:20px;padding:12px;border:2px solid #d9d2ff;border-radius:12px;margin:6px 0;outline:0;text-align:center}
+input:focus{border-color:#7c3aed}
+#card.ok{animation:okf .6s}#card.bad{animation:shake .45s}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.tab{white-space:nowrap;background:#ffffff26;color:#fff;padding:9px 14px}
+.tab.on{background:#fff;color:var(--ink)}
+.ttl{font-weight:700;margin-bottom:6px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #0001}
+.row.anim{animation:rin .3s backwards}
+.row b{margin-left:auto}
+.rk{width:30px;text-align:center;font-weight:700}
+.nm small{display:block;opacity:.55;font-size:12px}
+.me{background:#fff3bf;border-radius:10px}
+.up{animation:upf 1s}
+.fly{position:fixed;font-weight:800;font-size:20px;transform:translateX(-50%);pointer-events:none;animation:rise 1.1s forwards;z-index:9;text-shadow:0 1px 0 #fff}
+.conf{position:fixed;top:-30px;pointer-events:none;z-index:9;animation:fall 2s linear forwards}
+.bg span{position:fixed;font-size:34px;opacity:.15;animation:float 9s ease-in-out infinite;z-index:0}
+@keyframes bump{40%{transform:scale(1.25);background:#fff3bf}}
+@keyframes qin{from{opacity:0;transform:translateY(10px) scale(.95)}}
+@keyframes okf{30%{box-shadow:0 0 0 4px #22c55e,0 8px 24px #0003}}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+@keyframes rin{from{opacity:0;transform:translateX(-12px)}}
+@keyframes upf{from{background:#bbf7d0}}
+@keyframes rise{to{transform:translate(-50%,-70px);opacity:0}}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+@keyframes float{50%{transform:translateY(-24px) rotate(12deg)}}
+@keyframes pulse{70%{box-shadow:0 0 0 7px #4ade8000}0%{box-shadow:0 0 0 0 #4ade80}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style></head><body>
-<h2>🏆 Топ-100 России</h2>
-<div id="auth" class="card" hidden>
-  <input id="nick" placeholder="Ник"><input id="region" placeholder="Регион (например, Татарстан)">
-  <button onclick="reg()">Начать</button>
-</div>
-<div id="app" hidden>
-  <div class="card" id="wallet"></div>
-  <div class="card">
-    <div id="q" style="font-size:22px;margin-bottom:8px"></div>
-    <input id="a" type="number" placeholder="Ответ" onkeydown="if(event.key=='Enter')ans()">
-    <button onclick="ans()">Ответить</button>
-    <button class="o" onclick="task('easy')">Обычное</button>
-    <button class="o" onclick="task('olymp')">Олимпиадное</button>
-    <div id="msg" style="margin-top:6px"></div>
+<div class="bg"><span style="left:6%;top:12%">🪙</span><span style="left:80%;top:20%;animation-delay:-3s">💎</span><span style="left:15%;top:70%;animation-delay:-5s">🥚</span><span style="left:85%;top:75%;animation-delay:-2s">🏆</span></div>
+<div class="wrap">
+  <div class="top"><h1>🏆 Топляндия</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="pill" id="live"><i class="dot"></i><span id="livetxt">офлайн</span></span>
+      <button class="icon-btn" id="mute" onclick="toggleMute()">🔊</button></div></div>
+
+  <div id="auth" class="card" hidden>
+    <h3 style="margin-top:0">Добро пожаловать! 👋</h3>
+    <input id="inick" placeholder="Придумай ник" maxlength="20" style="text-align:left">
+    <input id="region" placeholder="Регион (например, Якутия)" maxlength="40" style="text-align:left">
+    <div id="err" style="color:#dc2626;min-height:20px"></div>
+    <button class="go" onclick="reg()">Начать играть</button>
   </div>
-  <div class="tabs" id="tabs"></div>
-  <div class="card" id="top"></div>
+
+  <div id="app" hidden>
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px">👤 <span id="who"></span></div>
+      <div class="chips">
+        <div class="chip"><span id="c">0</span><small>🪙 монеты</small></div>
+        <div class="chip"><span id="d">0</span><small>💎 алмазы</small></div>
+        <div class="chip"><span id="s">0</span><small>🔥 серия</small></div>
+      </div>
+      <div class="bar"><i id="bar"></i></div><div class="hint" id="barTxt"></div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="seg"><button id="k-easy" class="on" onclick="setKind('easy')">Обычное</button><button id="k-olymp" onclick="setKind('olymp')">🎓 Олимпиадное</button></div>
+      <div id="q"></div>
+      <input id="a" type="number" inputmode="numeric" placeholder="Твой ответ" onkeydown="if(event.key=='Enter')ans()">
+      <button class="go" onclick="ans()">Ответить</button>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="card"><div class="ttl" id="ttl"></div><div id="top"></div></div>
+  </div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const NAMES={day:'День',week:'Неделя',month:'Месяц',year:'Год',olymp:'Олимпиадники'};
-const CUR={coins:'🪙',diamonds:'💎'};
-let token=localStorage.token,user,prices,cur='day',es,t;
-async function api(p,o={}){const r=await fetch('/api'+p,{...o,headers:{'content-type':'application/json','x-token':token||''}});return{s:r.status,d:await r.json()}}
-async function reg(){const r=await api('/register',{method:'POST',body:JSON.stringify({nick:$('nick').value,region:$('region').value})});
-  if(r.s==201){token=r.d.token;localStorage.token=token;init()}else alert(r.d.error)}
-async function init(){const r=await api('/me');if(r.s!=200){$('auth').hidden=false;return}
-  user=r.d.user;prices=r.d.prices;$('auth').hidden=true;$('app').hidden=false;draw();task('easy');open(cur)}
-function draw(){$('wallet').textContent=`${user.nick} · 🪙 ${user.coins} · 💎 ${user.diamonds} · серия ${user.streak}`;
-  $('tabs').innerHTML=Object.keys(NAMES).map(p=>{const pr=prices[p],lock=pr.amount&&!((user.unlocks[p]||0)>Date.now());
-    return `<button class="${p==cur?'on':'o'}" onclick="open('${p}')">${lock?'🔒 ':''}${NAMES[p]}</button>`}).join('')}
-async function task(k){const r=await api('/task?kind='+k);t=r.d;$('q').textContent=(k=='olymp'?'🎓 ':'')+t.question+' = ?';$('a').value='';$('a').focus()}
-async function ans(){const r=await api('/answer',{method:'POST',body:JSON.stringify({id:t.id,answer:$('a').value})});
-  if(r.s!=200){$('msg').textContent=r.d.error;return}user=r.d.user;draw();
-  $('msg').textContent=r.d.correct?`✅ +${r.d.gained.points+r.d.gained.olymp} очков, +${r.d.gained.coins} 🪙${r.d.gained.diamond?' и 💎!':''}`:`❌ Верно: ${r.d.correctAnswer}`;
-  task(t.kind)}
-async function open(p){cur=p;draw();if(es)es.close();const pr=prices[p];
-  if(pr.amount&&!((user.unlocks[p]||0)>Date.now())){
-    $('top').innerHTML=`<p>Топ закрыт. Цена: ${pr.amount} ${CUR[pr.cur]} (доступ на 24 часа)</p><button onclick="unlock('${p}')">Открыть</button>`;return}
-  es=new EventSource(`/api/stream/${p}?token=${token}`);es.onmessage=e=>show(JSON.parse(e.data))}
+const ICON={coins:'🪙',diamonds:'💎'};
+let token=null,user,prices,cur='day',es=null,t,kind='easy',busy=false,prev={},muted=false;
+try{token=localStorage.token;muted=localStorage.muted==='1'}catch(e){}
+$('mute').textContent=muted?'🔇':'🔊';
+
+// ---- звуки (WebAudio, без файлов) ----
+let ac;
+function tone(f,at,d,type='sine',v=.15){if(muted)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();
+  const o=ac.createOscillator(),g=ac.createGain(),s=ac.currentTime+at;o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+.01);g.gain.exponentialRampToValueAtTime(.001,s+d);
+  o.connect(g);g.connect(ac.destination);o.start(s);o.stop(s+d+.02)}catch(e){}}
+const SND={ok:()=>{tone(660,0,.12);tone(880,.09,.18)},bad:()=>tone(180,0,.25,'sawtooth',.1),
+  gem:()=>[880,1108,1318,1760].forEach((f,i)=>tone(f,i*.09,.25,'triangle')),
+  unlock:()=>[392,523,659,784].forEach((f,i)=>tone(f,i*.07,.2,'square',.07)),tap:()=>tone(520,0,.05,'sine',.08)};
+function toggleMute(){muted=!muted;try{localStorage.muted=muted?'1':'0'}catch(e){}$('mute').textContent=muted?'🔇':'🔊';SND.tap()}
+
+// ---- эффекты ----
+function pop(text,color){const s=document.createElement('span'),r=$('q').getBoundingClientRect();s.className='fly';s.textContent=text;s.style.color=color||'#16a34a';
+  s.style.left=(r.left+r.width/2)+'px';s.style.top=r.top+'px';document.body.appendChild(s);setTimeout(()=>s.remove(),1200)}
+function confetti(){const e=['💎','✨','🎉','🪙'];for(let i=0;i<24;i++){const s=document.createElement('span');s.className='conf';s.textContent=e[i%4];
+  s.style.left=Math.random()*100+'vw';s.style.animationDelay=Math.random()*.4+'s';s.style.fontSize=(16+Math.random()*18)+'px';document.body.appendChild(s);setTimeout(()=>s.remove(),2500)}}
+function flash(c){const el=$('card');el.className='card';void el.offsetWidth;el.className='card '+c;setTimeout(()=>el.className='card',650)}
+function setLive(on){$('live').className='pill'+(on?' live':'');$('livetxt').textContent=on?'LIVE':'офлайн'}
+
+// ---- API ----
+async function api(p,o={}){try{const r=await fetch('/api'+p,{...o,headers:{'content-type':'application/json','x-token':token||''}});return{s:r.status,d:await r.json()}}catch(e){return{s:0,d:{}}}}
+async function reg(){const r=await api('/register',{method:'POST',body:JSON.stringify({nick:$('inick').value,region:$('region').value})});
+  if(r.s==201){token=r.d.token;try{localStorage.token=token}catch(e){}SND.ok();init()}
+  else $('err').textContent=({nick_taken:'Этот ник занят',nick_too_short:'Минимум 2 символа'})[r.d.error]||'Ошибка, попробуй ещё раз'}
+async function init(){const r=await api('/me');
+  if(r.s!=200){$('auth').hidden=false;$('app').hidden=true;return}
+  user=r.d.user;prices=r.d.prices;$('auth').hidden=true;$('app').hidden=false;drawWallet();loadTask();openTop(cur,true)}
+
+// ---- кошелёк и вкладки ----
+const locked=p=>prices[p].amount>0&&!((user.unlocks[p]||0)>Date.now());
+function drawWallet(old){$('who').textContent=user.nick;
+  for(const[id,k]of[['c','coins'],['d','diamonds'],['s','streak']]){const el=$(id);el.textContent=user[k];
+    if(old&&old[k]<user[k]){const p=el.parentNode;p.classList.remove('bump');void p.offsetWidth;p.classList.add('bump')}}
+  $('bar').style.width=(user.streak%10)*10+'%';$('barTxt').textContent=`До 💎 осталось верных подряд: ${10-user.streak%10}`;drawTabs()}
+function drawTabs(){$('tabs').innerHTML=Object.keys(NAMES).map(p=>`<button class="tab ${p==cur?'on':''}" onclick="openTop('${p}')">${locked(p)?'🔒 ':''}${NAMES[p]}</button>`).join('')}
+
+// ---- задания ----
+function setKind(k){SND.tap();kind=k;$('k-easy').className=k=='easy'?'on':'';$('k-olymp').className=k=='olymp'?'on':'';loadTask()}
+async function loadTask(){const r=await api('/task?kind='+kind);if(r.s!=200)return;t=r.d;
+  const q=$('q');q.textContent=t.question+' = ?';q.className='';void q.offsetWidth;q.className='in';$('a').value='';$('a').focus()}
+async function ans(){if(busy||$('a').value===''||!t)return;busy=true;
+  const r=await api('/answer',{method:'POST',body:JSON.stringify({id:t.id,answer:$('a').value})});
+  if(r.s==429){busy=false;return}
+  if(r.s!=200){busy=false;loadTask();return}
+  const d=r.d,old=user;user=d.user;
+  if(d.correct){const g=d.gained;SND.ok();flash('ok');pop(`+${g.points+g.olymp} очков · +${g.coins} 🪙`);
+    if(g.diamond){setTimeout(SND.gem,250);setTimeout(()=>pop('+1 💎','#2563eb'),300);confetti()}}
+  else{SND.bad();flash('bad');if(navigator.vibrate)navigator.vibrate(120);pop('Верно: '+d.correctAnswer,'#dc2626')}
+  drawWallet(old);if(locked(cur))openTop(cur,true);
+  setTimeout(()=>{busy=false;loadTask()},650)}
+
+// ---- топы ----
+function openTop(p,quiet){if(!quiet)SND.tap();cur=p;prev={};if(es){es.close();es=null}setLive(false);drawTabs();
+  $('ttl').textContent=NAMES[p];
+  if(locked(p)){const pr=prices[p],have=user[pr.cur],need=pr.amount-have,ic=ICON[pr.cur];
+    $('top').innerHTML=`<div style="text-align:center"><div style="font-size:44px">🔒</div><h3>Топ «${NAMES[p]}» закрыт</h3><p>Цена: <b>${pr.amount} ${ic}</b> за 24 часа доступа<br>У тебя: ${have} ${ic}</p>`+
+      (need>0?`<p>Не хватает ${need} ${ic} — решай задания!</p>`:`<button class="go" onclick="unlock('${p}')">Открыть за ${pr.amount} ${ic}</button>`)+`</div>`;return}
+  $('top').innerHTML='<p style="text-align:center">Загрузка…</p>';
+  es=new EventSource(`/api/stream/${p}?token=${token}`);
+  es.onmessage=e=>{setLive(true);show(JSON.parse(e.data))};
+  es.onerror=()=>{setLive(false);api('/me').then(r=>{if(r.s==401){try{localStorage.removeItem('token')}catch(_){}location.reload()}})}}
 async function unlock(p){const r=await api('/unlock',{method:'POST',body:JSON.stringify({period:p})});
-  if(r.s==200){user=r.d.user;open(p)}else alert(r.d.error=='not_enough'?'Не хватает валюты':r.d.error)}
-function show(d){$('top').innerHTML=(d.top.map(r=>`<div class="row ${r.id==user.id?'me':''}"><span>${r.rank}. ${r.nick} <small>${r.region||''}</small></span><b>${r.score}</b></div>`).join('')||'Пока пусто — ответь на задание!')
-  +(d.me&&d.me.rank>100?`<div class="row me"><span>${d.me.rank}. ${d.me.nick}</span><b>${d.me.score}</b></div>`:'')}
+  if(r.s==200){user=r.d.user;SND.unlock();confetti();drawWallet();openTop(p,true)}else alert(r.d.error=='not_enough'?'Не хватает валюты':'Ошибка')}
+function show(d){const M=['🥇','🥈','🥉'],first=!Object.keys(prev).length;
+  $('ttl').textContent=`${NAMES[d.period]} · игроков: ${d.total}`;
+  let h=d.top.map((r,i)=>{const up=prev[r.id]!==undefined&&r.score>prev[r.id];
+    return `<div class="row ${first?'anim':''} ${r.id==user.id?'me':''} ${up?'up':''}" style="animation-delay:${Math.min(i,15)*20}ms"><span class="rk">${M[i]||r.rank}</span><span class="nm">${esc(r.nick)}<small>${esc(r.region||'')}</small></span><b>${r.score}</b></div>`}).join('');
+  if(d.me&&d.me.rank>100)h+=`<div class="row me"><span class="rk">${d.me.rank}</span><span class="nm">${esc(d.me.nick)}</span><b>${d.me.score}</b></div>`;
+  $('top').innerHTML=h||'<p style="text-align:center">Пока пусто — стань первым! 🚀</p>';
+  prev={};d.top.forEach(r=>prev[r.id]=r.score)}
+
+setInterval(()=>{if(user&&es&&locked(cur))openTop(cur,true)},5000);
+$('inick').addEventListener('keydown',e=>{if(e.key=='Enter')$('region').focus()});
+$('region').addEventListener('keydown',e=>{if(e.key=='Enter')reg()});
 init();
 </script></body></html>
