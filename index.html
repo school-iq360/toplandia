@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Топ-100 России</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:12px;background:#f5f6fa;color:#222}
+.card{background:#fff;border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 3px #0002}
+button{padding:8px 12px;border:0;border-radius:8px;background:#4f6df5;color:#fff;font-size:15px}
+button.o{background:#e9ecfb;color:#222}button.on{background:#222;color:#fff}
+input{padding:8px;font-size:16px;border:1px solid #ccc;border-radius:8px;width:100%;box-sizing:border-box;margin:4px 0}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+.me{background:#fff7d6}.tabs{display:flex;gap:6px;flex-wrap:wrap}
+</style></head><body>
+<h2>🏆 Топ-100 России</h2>
+<div id="auth" class="card" hidden>
+  <input id="nick" placeholder="Ник"><input id="region" placeholder="Регион (например, Татарстан)">
+  <button onclick="reg()">Начать</button>
+</div>
+<div id="app" hidden>
+  <div class="card" id="wallet"></div>
+  <div class="card">
+    <div id="q" style="font-size:22px;margin-bottom:8px"></div>
+    <input id="a" type="number" placeholder="Ответ" onkeydown="if(event.key=='Enter')ans()">
+    <button onclick="ans()">Ответить</button>
+    <button class="o" onclick="task('easy')">Обычное</button>
+    <button class="o" onclick="task('olymp')">Олимпиадное</button>
+    <div id="msg" style="margin-top:6px"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="card" id="top"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const NAMES={day:'День',week:'Неделя',month:'Месяц',year:'Год',olymp:'Олимпиадники'};
+const CUR={coins:'🪙',diamonds:'💎'};
+let token=localStorage.token,user,prices,cur='day',es,t;
+async function api(p,o={}){const r=await fetch('/api'+p,{...o,headers:{'content-type':'application/json','x-token':token||''}});return{s:r.status,d:await r.json()}}
+async function reg(){const r=await api('/register',{method:'POST',body:JSON.stringify({nick:$('nick').value,region:$('region').value})});
+  if(r.s==201){token=r.d.token;localStorage.token=token;init()}else alert(r.d.error)}
+async function init(){const r=await api('/me');if(r.s!=200){$('auth').hidden=false;return}
+  user=r.d.user;prices=r.d.prices;$('auth').hidden=true;$('app').hidden=false;draw();task('easy');open(cur)}
+function draw(){$('wallet').textContent=`${user.nick} · 🪙 ${user.coins} · 💎 ${user.diamonds} · серия ${user.streak}`;
+  $('tabs').innerHTML=Object.keys(NAMES).map(p=>{const pr=prices[p],lock=pr.amount&&!((user.unlocks[p]||0)>Date.now());
+    return `<button class="${p==cur?'on':'o'}" onclick="open('${p}')">${lock?'🔒 ':''}${NAMES[p]}</button>`}).join('')}
+async function task(k){const r=await api('/task?kind='+k);t=r.d;$('q').textContent=(k=='olymp'?'🎓 ':'')+t.question+' = ?';$('a').value='';$('a').focus()}
+async function ans(){const r=await api('/answer',{method:'POST',body:JSON.stringify({id:t.id,answer:$('a').value})});
+  if(r.s!=200){$('msg').textContent=r.d.error;return}user=r.d.user;draw();
+  $('msg').textContent=r.d.correct?`✅ +${r.d.gained.points+r.d.gained.olymp} очков, +${r.d.gained.coins} 🪙${r.d.gained.diamond?' и 💎!':''}`:`❌ Верно: ${r.d.correctAnswer}`;
+  task(t.kind)}
+async function open(p){cur=p;draw();if(es)es.close();const pr=prices[p];
+  if(pr.amount&&!((user.unlocks[p]||0)>Date.now())){
+    $('top').innerHTML=`<p>Топ закрыт. Цена: ${pr.amount} ${CUR[pr.cur]} (доступ на 24 часа)</p><button onclick="unlock('${p}')">Открыть</button>`;return}
+  es=new EventSource(`/api/stream/${p}?token=${token}`);es.onmessage=e=>show(JSON.parse(e.data))}
+async function unlock(p){const r=await api('/unlock',{method:'POST',body:JSON.stringify({period:p})});
+  if(r.s==200){user=r.d.user;open(p)}else alert(r.d.error=='not_enough'?'Не хватает валюты':r.d.error)}
+function show(d){$('top').innerHTML=(d.top.map(r=>`<div class="row ${r.id==user.id?'me':''}"><span>${r.rank}. ${r.nick} <small>${r.region||''}</small></span><b>${r.score}</b></div>`).join('')||'Пока пусто — ответь на задание!')
+  +(d.me&&d.me.rank>100?`<div class="row me"><span>${d.me.rank}. ${d.me.nick}</span><b>${d.me.score}</b></div>`:'')}
+init();
+</script></body></html>
