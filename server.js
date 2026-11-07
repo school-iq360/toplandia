@@ -26,18 +26,76 @@ const STREAK_FOR_DIAMOND = 10;
 
 // ---------- хранилище (JSON-файл; для продакшена замени на PostgreSQL) ----------
 let db = { users: {}, events: [] };
-try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (_) {}
-const byToken = new Map(Object.values(db.users).map(u => [u.token, u]));
-let saveTimer = null, dirty = false;
-function save() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    fs.writeFile(DB_FILE + '.tmp', JSON.stringify(db), err => {
-      if (!err) fs.rename(DB_FILE + '.tmp', DB_FILE, () => {});
-    });
-  }, 500);
+let byToken = new Map();
+
+// Хранилище: PostgreSQL (если задан DATABASE_URL), иначе обычный файл.
+// На бесплатном Render файлы стираются при перезапуске, поэтому для настоящих игроков нужна база.
+function fileStore() {
+  return {
+    name: 'файл ' + DB_FILE,
+    async read() {
+      try { return fs.readFileSync(DB_FILE, 'utf8'); }
+      catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+    },
+    async write(text) {
+      await fs.promises.writeFile(DB_FILE + '.tmp', text);
+      await fs.promises.rename(DB_FILE + '.tmp', DB_FILE);
+    },
+  };
 }
+function pgStore() {
+  const { Pool } = require('pg');
+  const url = process.env.DATABASE_URL;
+  const pool = new Pool({
+    connectionString: url, max: 3, connectionTimeoutMillis: 20000,
+    ssl: /localhost|127\.0\.0\.1/.test(url) ? false : { rejectUnauthorized: false },
+  });
+  pool.on('error', e => console.error('Ошибка соединения с базой:', e.message));
+  return {
+    name: 'PostgreSQL',
+    async read() {
+      await pool.query('CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v text NOT NULL, updated timestamptz NOT NULL DEFAULT now())');
+      const r = await pool.query("SELECT v FROM kv WHERE k = 'main'");
+      return r.rows.length ? r.rows[0].v : null;
+    },
+    async write(text) {
+      await pool.query("INSERT INTO kv (k, v) VALUES ('main', $1) ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v, updated = now()", [text]);
+    },
+  };
+}
+const store = process.env.DATABASE_URL ? pgStore() : fileStore();
+
+async function loadDb() {
+  const raw = await store.read(); // при ошибке сервер не запустится, чтобы не затереть данные пустой базой
+  if (raw) db = JSON.parse(raw);
+  byToken = new Map(Object.values(db.users).map(u => [u.token, u]));
+  // миграция: добавляем новые поля старым игрокам и считаем их общие очки по истории
+  if (Object.values(db.users).some(u => u.pts === undefined)) {
+    for (const u of Object.values(db.users)) Object.assign(u, { pts: 0, olymp: 0, seconds: 0, av: 0, photo: null });
+    for (const e of db.events) { const u = db.users[e.u]; if (u) { u.pts += e.p; u.olymp += e.o; } }
+  }
+  console.log(`Данные загружены (${store.name}): игроков ${Object.keys(db.users).length}, событий ${db.events.length}`);
+}
+
+// Автосохранение: раз в минуту, и только если что-то изменилось (так база может "спать"), плюс при остановке сервера
+let dirty = false, flushing = false;
+function save() { dirty = true; }
+async function flush() {
+  if (!dirty || flushing) return;
+  flushing = true; dirty = false;
+  try { await store.write(JSON.stringify(db)); }
+  catch (e) { dirty = true; console.error('Ошибка сохранения:', e.message); }
+  flushing = false;
+}
+setInterval(flush, 60e3);
+async function shutdown() {
+  const t0 = Date.now();
+  while (flushing && Date.now() - t0 < 8000) await new Promise(r => setTimeout(r, 100));
+  await flush();
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // ---------- периоды (по московскому времени, UTC+3) ----------
 const MSK = 3 * 3600e3;
@@ -66,7 +124,7 @@ function computeTop(p) {
     if (v) sums.set(e.u, (sums.get(e.u) || 0) + v);
   }
   const list = [...sums].sort((a, b) => b[1] - a[1]).map(([id, score], i) => ({
-    rank: i + 1, id, nick: db.users[id].nick, region: db.users[id].region, score,
+    rank: i + 1, id, nick: db.users[id].nick, region: db.users[id].region, av: db.users[id].av || 0, score,
   }));
   topCache[p] = { at: Date.now(), list };
   return list;
@@ -95,16 +153,16 @@ function send(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
   res.end(JSON.stringify(obj));
 }
-function readBody(req) {
+function readBody(req, max = 10e3) {
   return new Promise((resolve, reject) => {
     let s = '';
-    req.on('data', c => { s += c; if (s.length > 10e3) { reject(new Error('big')); req.destroy(); } });
+    req.on('data', c => { s += c; if (s.length > max) { reject(new Error('big')); req.destroy(); } });
     req.on('end', () => { try { resolve(s ? JSON.parse(s) : {}); } catch (e) { reject(e); } });
   });
 }
 const lastHit = new Map();
 function limited(u, ms) { const n = Date.now(), l = lastHit.get(u.id) || 0; lastHit.set(u.id, n); return n - l < ms; }
-const me = u => ({ id: u.id, nick: u.nick, region: u.region, coins: u.coins, diamonds: u.diamonds, streak: u.streak, unlocks: u.unlocks });
+const me = u => ({ id: u.id, nick: u.nick, region: u.region, coins: u.coins, diamonds: u.diamonds, streak: u.streak, unlocks: u.unlocks, av: u.av || 0 });
 
 // ---------- SSE ----------
 const clients = new Set(); // {res, user, period}
@@ -141,9 +199,19 @@ const server = http.createServer(async (req, res) => {
       if (nick.length < 2) return send(res, 400, { error: 'nick_too_short' });
       if (Object.values(db.users).some(u => u.nick.toLowerCase() === nick.toLowerCase())) return send(res, 409, { error: 'nick_taken' });
       const u = { id: crypto.randomBytes(6).toString('hex'), token: crypto.randomBytes(24).toString('hex'), nick, region, country: 'RU',
-        coins: 0, diamonds: 0, streak: 0, unlocks: {}, created: Date.now() };
+        coins: 0, diamonds: 0, streak: 0, unlocks: {}, created: Date.now(),
+        pts: 0, olymp: 0, seconds: 0, av: 0, photo: null };
       db.users[u.id] = u; byToken.set(u.token, u); save();
       return send(res, 201, { token: u.token, user: me(u) });
+    }
+
+    // публичные аватарки (для <img>, без токена)
+    const ma = req.method === 'GET' && p.match(/^\/api\/avatar\/(\w+)$/);
+    if (ma) {
+      const au = db.users[ma[1]];
+      if (!au || !au.photo) return send(res, 404, { error: 'no_avatar' });
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
+      return res.end(Buffer.from(au.photo.split(',')[1], 'base64'));
     }
 
     // всё остальное требует токен
@@ -152,6 +220,31 @@ const server = http.createServer(async (req, res) => {
     if (!user) return send(res, 401, { error: 'unauthorized' });
 
     if (p === '/api/me') return send(res, 200, { user: me(user), prices: PRICES });
+
+    // время на сайте: клиент шлёт ping раз в 30 секунд, пока вкладка открыта
+    if (p === '/api/ping' && req.method === 'POST') {
+      const n = Date.now(), d = n - (user.lastPing || 0);
+      user.lastPing = n;
+      if (d >= 20e3) { user.seconds = (user.seconds || 0) + (d > 90e3 ? 30 : Math.round(d / 1000)); save(); }
+      return send(res, 200, { ok: true });
+    }
+
+    // фото профиля (клиент присылает уменьшенный JPEG 96x96 как data URL)
+    if (p === '/api/avatar' && req.method === 'POST') {
+      const n = Date.now();
+      if (n - (user.lastAv || 0) < 3000) return send(res, 429, { error: 'too_fast' });
+      user.lastAv = n;
+      const b = await readBody(req, 40e3);
+      if (b.remove) { user.photo = null; user.av = 0; }
+      else {
+        const img = String(b.image || '');
+        if (img.length > 30000 || !/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(img)) return send(res, 400, { error: 'bad_image' });
+        user.photo = img; user.av = n;
+      }
+      for (const k in topCache) delete topCache[k];
+      changed = true; save();
+      return send(res, 200, { user: me(user) });
+    }
 
     if (p === '/api/task' && req.method === 'GET') {
       const kind = url.searchParams.get('kind') === 'olymp' ? 'olymp' : 'easy';
@@ -168,7 +261,7 @@ const server = http.createServer(async (req, res) => {
       let gained = null;
       if (ok) {
         const r = REWARD[t.kind];
-        user.coins += r.coins; user.streak += 1;
+        user.coins += r.coins; user.streak += 1; user.pts += r.points; user.olymp += r.olymp;
         let diamond = 0;
         if (user.streak % STREAK_FOR_DIAMOND === 0) { user.diamonds += 1; diamond = 1; }
         db.events.push({ u: user.id, p: r.points, o: r.olymp, t: Date.now() });
@@ -192,6 +285,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     let m;
+    if ((m = p.match(/^\/api\/profile\/(\w+)$/))) {
+      const u = db.users[m[1]];
+      if (!u || !u.nick) return send(res, 404, { error: 'not_found' });
+      return send(res, 200, { id: u.id, nick: u.nick, region: u.region, av: u.av || 0,
+        pts: u.pts || 0, olymp: u.olymp || 0, seconds: u.seconds || 0, created: u.created });
+    }
     if ((m = p.match(/^\/api\/top\/(\w+)$/))) {
       if (!PRICES[m[1]]) return send(res, 400, { error: 'bad_period' });
       if (!hasAccess(user, m[1])) return send(res, 403, { error: 'locked', price: PRICES[m[1]] });
@@ -215,4 +314,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));
+loadDb()
+  .then(() => server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`)))
+  .catch(e => { console.error('Не удалось загрузить данные:', e.message); process.exit(1); });
