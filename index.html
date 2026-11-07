@@ -58,6 +58,19 @@ input:focus{border-color:#7c3aed}
 @keyframes float{50%{transform:translateY(-24px) rotate(12deg)}}
 @keyframes pulse{70%{box-shadow:0 0 0 7px #4ade8000}0%{box-shadow:0 0 0 0 #4ade80}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.av{width:40px;height:40px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;object-fit:cover}
+.row .av{width:36px;height:36px;font-size:16px}
+.av.big{width:96px;height:96px;font-size:40px}
+.row{cursor:pointer}
+.modal{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.modal[hidden]{display:none}
+.sheet{background:#fff;border-radius:22px;width:100%;max-width:520px;padding:20px;text-align:center;animation:qin .25s;max-height:90vh;overflow:auto}
+.stat{display:flex;justify-content:space-between;padding:10px 4px;border-bottom:1px solid #0001;text-align:left}
+.ghost{background:#ece8ff;color:var(--ink);width:100%;margin-top:8px}
+.donate{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:700;padding:14px;border-radius:14px;margin:12px 0;font-size:17px;box-shadow:0 6px 18px #0003}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.links .donate{margin:0;flex:1 1 200px}
+.donate.tt{background:#111;box-shadow:-2px -2px 0 #25f4ee,2px 2px 0 #fe2c55}
 </style></head><body>
 <div class="bg"><span style="left:6%;top:12%">🪙</span><span style="left:80%;top:20%;animation-delay:-3s">💎</span><span style="left:15%;top:70%;animation-delay:-5s">🥚</span><span style="left:85%;top:75%;animation-delay:-2s">🏆</span></div>
 <div class="wrap">
@@ -76,7 +89,7 @@ input:focus{border-color:#7c3aed}
 
   <div id="app" hidden>
     <div class="card">
-      <div style="font-weight:700;margin-bottom:8px">👤 <span id="who"></span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span id="myav"></span><b id="who" style="flex:1"></b><button class="ghost" style="width:auto;margin:0;padding:8px 12px" onclick="openProfile(user.id)">Профиль</button></div>
       <div class="chips">
         <div class="chip"><span id="c">0</span><small>🪙 монеты</small></div>
         <div class="chip"><span id="d">0</span><small>💎 алмазы</small></div>
@@ -94,8 +107,14 @@ input:focus{border-color:#7c3aed}
 
     <div class="tabs" id="tabs"></div>
     <div class="card"><div class="ttl" id="ttl"></div><div id="top"></div></div>
+    <div class="links">
+      <a class="donate" href="https://www.donationalerts.com/r/quiz_official" target="_blank" rel="noopener noreferrer">❤️ Поддержать проект</a>
+      <a class="donate tt" href="https://www.tiktok.com/@j9ido" target="_blank" rel="noopener noreferrer">🎵 TikTok @j9ido</a>
+    </div>
   </div>
 </div>
+<div class="modal" id="modal" hidden onclick="if(event.target===this)closeProfile()"><div class="sheet" id="sheet"></div></div>
+<input type="file" id="file" accept="image/*" hidden onchange="pickPhoto(this)">
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -131,11 +150,11 @@ async function reg(){const r=await api('/register',{method:'POST',body:JSON.stri
   else $('err').textContent=({nick_taken:'Этот ник занят',nick_too_short:'Минимум 2 символа'})[r.d.error]||'Ошибка, попробуй ещё раз'}
 async function init(){const r=await api('/me');
   if(r.s!=200){$('auth').hidden=false;$('app').hidden=true;return}
-  user=r.d.user;prices=r.d.prices;$('auth').hidden=true;$('app').hidden=false;drawWallet();loadTask();openTop(cur,true)}
+  user=r.d.user;prices=r.d.prices;$('auth').hidden=true;$('app').hidden=false;drawWallet();loadTask();openTop(cur,true);ping()}
 
 // ---- кошелёк и вкладки ----
 const locked=p=>prices[p].amount>0&&!((user.unlocks[p]||0)>Date.now());
-function drawWallet(old){$('who').textContent=user.nick;
+function drawWallet(old){$('who').textContent=user.nick;$('myav').innerHTML=avHTML(user.id,user.av,user.nick);
   for(const[id,k]of[['c','coins'],['d','diamonds'],['s','streak']]){const el=$(id);el.textContent=user[k];
     if(old&&old[k]<user[k]){const p=el.parentNode;p.classList.remove('bump');void p.offsetWidth;p.classList.add('bump')}}
   $('bar').style.width=(user.streak%10)*10+'%';$('barTxt').textContent=`До 💎 осталось верных подряд: ${10-user.streak%10}`;drawTabs()}
@@ -171,11 +190,35 @@ async function unlock(p){const r=await api('/unlock',{method:'POST',body:JSON.st
 function show(d){const M=['🥇','🥈','🥉'],first=!Object.keys(prev).length;
   $('ttl').textContent=`${NAMES[d.period]} · игроков: ${d.total}`;
   let h=d.top.map((r,i)=>{const up=prev[r.id]!==undefined&&r.score>prev[r.id];
-    return `<div class="row ${first?'anim':''} ${r.id==user.id?'me':''} ${up?'up':''}" style="animation-delay:${Math.min(i,15)*20}ms"><span class="rk">${M[i]||r.rank}</span><span class="nm">${esc(r.nick)}<small>${esc(r.region||'')}</small></span><b>${r.score}</b></div>`}).join('');
-  if(d.me&&d.me.rank>100)h+=`<div class="row me"><span class="rk">${d.me.rank}</span><span class="nm">${esc(d.me.nick)}</span><b>${d.me.score}</b></div>`;
+    return `<div class="row ${first?'anim':''} ${r.id==user.id?'me':''} ${up?'up':''}" style="animation-delay:${Math.min(i,15)*20}ms" onclick="openProfile('${r.id}')"><span class="rk">${M[i]||r.rank}</span>${avHTML(r.id,r.av,r.nick)}<span class="nm">${esc(r.nick)}<small>${esc(r.region||'')}</small></span><b>${r.score}</b></div>`}).join('');
+  if(d.me&&d.me.rank>100)h+=`<div class="row me" onclick="openProfile('${d.me.id}')"><span class="rk">${d.me.rank}</span>${avHTML(d.me.id,d.me.av,d.me.nick)}<span class="nm">${esc(d.me.nick)}</span><b>${d.me.score}</b></div>`;
   $('top').innerHTML=h||'<p style="text-align:center">Пока пусто — стань первым! 🚀</p>';
   prev={};d.top.forEach(r=>prev[r.id]=r.score)}
 
+// ---- профили и фото ----
+function avHTML(id,av,nick,cls=''){
+  if(av)return `<img class="av ${cls}" src="/api/avatar/${id}?v=${av}" alt="" loading="lazy">`;
+  let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))%360;
+  return `<span class="av ${cls}" style="background:hsl(${h},60%,50%)">${esc((Array.from(nick||'?')[0]||'?').toUpperCase())}</span>`}
+const fmtH=s=>(s/3600).toFixed(1).replace('.',',')+' ч';
+async function openProfile(id){SND.tap();const r=await api('/profile/'+id);if(r.s!=200)return;const p=r.d,mine=p.id==user.id;
+  $('sheet').innerHTML=avHTML(p.id,p.av,p.nick,'big')+`<h2 style="margin:10px 0 2px">${esc(p.nick)}</h2><div style="opacity:.6;margin-bottom:10px">📍 ${esc(p.region||'—')}</div>
+  <div class="stat"><span>Очки · обычный режим</span><b>${p.pts}</b></div>
+  <div class="stat"><span>🎓 Очки · олимпиадный режим</span><b>${p.olymp}</b></div>
+  <div class="stat"><span>⏱ Время на сайте</span><b>${fmtH(p.seconds)}</b></div>
+  <div class="stat"><span>📅 Дата регистрации</span><b>${new Date(p.created).toLocaleDateString('ru-RU')}</b></div>`
+  +(mine?`<button class="go" style="margin-top:12px" onclick="$('file').click()">📷 ${p.av?'Сменить':'Добавить'} фото</button>`+(p.av?`<button class="ghost" onclick="rmPhoto()">Удалить фото</button>`:''):'')
+  +`<button class="ghost" onclick="closeProfile()">Закрыть</button>`;$('modal').hidden=false}
+function closeProfile(){$('modal').hidden=true}
+function pickPhoto(inp){const f=inp.files[0];inp.value='';if(!f)return;const img=new Image(),url=URL.createObjectURL(f);
+  img.onload=async()=>{const c=document.createElement('canvas'),S=96,m=Math.min(img.width,img.height);c.width=c.height=S;
+    c.getContext('2d').drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,S,S);URL.revokeObjectURL(url);
+    const r=await api('/avatar',{method:'POST',body:JSON.stringify({image:c.toDataURL('image/jpeg',.8)})});
+    if(r.s==200){user=r.d.user;drawWallet();openProfile(user.id);SND.ok()}else alert('Не удалось загрузить фото, попробуй ещё раз')};
+  img.onerror=()=>alert('Не удалось открыть это фото');img.src=url}
+async function rmPhoto(){const r=await api('/avatar',{method:'POST',body:JSON.stringify({remove:true})});if(r.s==200){user=r.d.user;drawWallet();openProfile(user.id)}}
+function ping(){if(user&&document.visibilityState==='visible')api('/ping',{method:'POST',body:'{}'})}
+setInterval(ping,30000);
 setInterval(()=>{if(user&&es&&locked(cur))openTop(cur,true)},5000);
 $('inick').addEventListener('keydown',e=>{if(e.key=='Enter')$('region').focus()});
 $('region').addEventListener('keydown',e=>{if(e.key=='Enter')reg()});
