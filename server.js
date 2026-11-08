@@ -185,7 +185,12 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
   try {
-    if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
+    const readOnly = req.method === 'GET' || req.method === 'HEAD'; // HEAD шлют сервисы мониторинга
+    if (readOnly && p === '/health') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      return res.end('ok');
+    }
+    if (readOnly && (p === '/' || p === '/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(fs.readFileSync(path.join(__dirname, 'index.html')));
     }
